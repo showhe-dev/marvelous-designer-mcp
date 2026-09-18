@@ -1,7 +1,7 @@
 # marvelous-designer-mcp
 
 A [Model Context Protocol](https://modelcontextprotocol.io/) server that lets an
-LLM (e.g. Claude) drive **Marvelous Designer** (and CLO, which shares the same
+Codex / ChatGPT (or any MCP-capable client) drive **Marvelous Designer** (and CLO, which shares the same
 Python API) by running code inside MD's embedded Python interpreter.
 
 It does **not** need the C++ SDK, a plugin build, or a CLO-SET API key — just MD's
@@ -27,14 +27,14 @@ the `shutdown_listener` tool (or by closing MD).
 
 ## Requirements
 
-- Marvelous Designer 2026 (or CLO 2026) — `Plugins ▸ Python Editor` must be available
+- Marvelous Designer 2025.x or 2026.x — `Plugins ▸ Python Editor` must be available\n- MD 2025.1.107+ is preferred for Plug-in Manager registration; earlier 2025 builds can use the Python Editor route
 - Python 3.10+ and [`uv`](https://docs.astral.sh/uv/) on the machine running the MCP server
 - The MCP server and MD run on the **same machine** (the listener binds `127.0.0.1`)
 
 ## Setup
 
 ```powershell
-git clone https://github.com/ysk424/marvelous-designer-mcp.git
+git clone https://github.com/showhe-dev/marvelous-designer-mcp.git
 cd marvelous-designer-mcp
 uv sync
 ```
@@ -74,33 +74,20 @@ plugin mode, where stdout may not be visible).
 uv run python -m marvelous_designer_mcp
 ```
 
-Or let Claude Desktop launch it (below).
+Or let Codex launch it as an MCP server.
 
-### 3. Claude Desktop config
+### 3. Codex MCP config
 
-Add to `claude_desktop_config.json`
-(`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+Add this server to your Codex MCP configuration using the repository path on your machine:
 
-```json
-{
-  "mcpServers": {
-    "marvelous-designer": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "C:\\Users\\you\\git\\marvelous-designer-mcp",
-        "python",
-        "-m",
-        "marvelous_designer_mcp"
-      ]
-    }
-  }
-}
+```toml
+[mcp_servers.marvelous-designer]
+command = "uv"
+args = ["run", "--directory", "C:\\Users\\you\\git\\marvelous-designer-mcp", "python", "-m", "marvelous_designer_mcp"]
 ```
 
-Restart Claude Desktop. The MD listener must already be running (step 1) for the
-tools to work.
+Start the MD listener first, then start or reload Codex so it can discover the tools.
+
 
 ## Tools
 
@@ -109,7 +96,7 @@ tools to work.
 | `ping` | Check the listener is reachable. |
 | `execute_python(code)` | Run arbitrary Python in MD's interpreter. `import` the `*_api` modules; bind your return value to a name called `result`. Returns `{stdout, stderr, result, error}`. |
 | `shutdown_listener()` | Stop the listener loop and release the MD GUI. |
-| `scene_info()` | Project name/path, MD version, pattern & fabric counts. |
+| `capabilities()` | Detect MD/Python versions and available API modules/functions for 2025/2026 compatibility. |\n| `scene_info()` | Project name/path, MD version, pattern & fabric counts. |
 | `list_patterns()` | Pattern pieces: index, name, assigned fabric index. |
 | `list_fabrics()` | Fabrics: index, name (+ fabric-style list). |
 | `assign_fabric(fabric_index, pattern_index, face=2)` | `fabric_api.AssignFabricToPattern`. |
@@ -138,7 +125,7 @@ for CLO 3D and for the day MD adds a `.dll` loader; see `cpp_plugin/README.md`.
 ## Caveats
 
 - **MD freezes while the listener runs.** Use `shutdown_listener` when you want the
-  GUI back. For an LLM-driven workflow this is usually fine — Claude does the work.
+  GUI back. For an MCP-driven workflow this is usually fine — Codex can do the work.
 - **Modal-dialog deadlock.** Any API call that pops a modal dialog (unsaved-changes
   prompt, error popup, file picker) hangs the listener forever, because MD's GUI
   thread is stuck in our loop. Recovery: close MD. The wrappers pick dialog-free
@@ -164,7 +151,7 @@ them in sync if you change the defaults.)
 ## Uninstall
 
 There's nothing installed inside MD — just stop the listener (`shutdown_listener`
-or close MD) and remove the Claude Desktop config entry. Delete the repo to remove
+or close MD) and remove the Codex MCP config entry. Delete the repo to remove
 the rest.
 
 ## License
