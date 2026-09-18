@@ -20,7 +20,7 @@ LLM  ──MCP(stdio)──▶  MCP server (this repo, FastMCP)
                                       pattern_api / utility_api / ...
 ```
 
-MD's embedded Python (3.11) does **not** schedule background threads, so the
+MD's embedded Python does **not reliably** support this listener on background threads, so the
 listener is a plain blocking accept loop that runs on MD's GUI thread. **While the
 listener is running, MD's window is unresponsive** — that's expected. Stop it with
 the `shutdown_listener` tool (or by closing MD).
@@ -97,9 +97,9 @@ Start the MD listener first, then start or reload Codex so it can discover the t
 | `execute_python(code)` | Run arbitrary Python in MD's interpreter. `import` the `*_api` modules; bind your return value to a name called `result`. Returns `{stdout, stderr, result, error}`. |
 | `shutdown_listener()` | Stop the listener loop and release the MD GUI. |
 | `capabilities()` | Detect MD/Python versions and available API modules/functions for 2025/2026 compatibility. |\n| `scene_info()` | Project name/path, MD version, pattern & fabric counts. |
-| `list_patterns()` | Pattern pieces: index, name, assigned fabric index. |
-| `list_fabrics()` | Fabrics: index, name (+ fabric-style list). |
-| `assign_fabric(fabric_index, pattern_index, face=2)` | `fabric_api.AssignFabricToPattern`. |
+| `list_patterns()` | Pattern pieces: index, name, assigned fabric index and 2D position. |\n| `get_pattern_info(pattern_index)` | Detailed pattern information from MD. |\n| `create_pattern(points, name=\"\")` | Create a 2D pattern from `[x, y, type]` points. |\n| `rename_pattern(pattern_index, name)` | Rename a pattern piece. |\n| `move_pattern(pattern_index, x, y)` | Set a pattern's 2D position. |\n| `delete_pattern(pattern_index)` | Delete a pattern piece. |
+| `list_fabrics()` | Fabrics: index, name (+ fabric-style list). |\n| `create_fabric(name)` | Create and name a fabric. |\n| `rename_fabric(fabric_index, name)` | Rename a fabric. |\n| `new_project()` | Start a blank MD project. |
+| `assign_fabric(fabric_index, pattern_index, face=0)` | Assign fabric and verify the resulting pattern fabric index. |
 | `import_project(path)` | Open a `.zprj` / `.zpac` / `.obj` / `.fbx` / ... by absolute path (`import_api.ImportFile`). |
 | `export_project(path)` | Save the scene as a `.zprj` (`export_api.ExportZPrjW`). |
 | `simulate(steps=1)` | `utility_api.Simulate(int)`. |
@@ -109,7 +109,7 @@ Anything not covered by a wrapper: use `execute_python` directly.
 
 ## Why does MD freeze while the listener runs?
 
-MD's embedded Python (3.11) doesn't give CPU to background threads — a daemon
+The tested MD 2025.0.127 embedded Python 3.7.9 environment does not provide a safe background-thread listener — a daemon
 thread spawned from a script is `is_alive() == True` but never actually
 executes. So the socket server has to run on whatever thread the Python Editor
 uses, which is MD's GUI thread. Empirically (verified live), API calls work
@@ -157,3 +157,4 @@ the rest.
 ## License
 
 MIT — see `LICENSE`.
+\n## MD 2025 verification\n\nLive testing on Marvelous Designer **2025.0.127** (embedded Python **3.7.9**) verified bridge ping, arbitrary Python execution, capability detection, scene/pattern/fabric reads, simulation, pattern creation/naming/movement, fabric creation, ZPRJ export, scene reset, ZPRJ re-import, state persistence, and clean listener shutdown. A disposable rectangle project survived a complete export → NewProject → import round trip with its name, 2D position, fabric index and fabric style intact.\n
