@@ -105,9 +105,9 @@ def get_pattern_info(pattern_index: int) -> dict:
     return _md_exec(
         "import pattern_api\n"
         "i = {}\n"
-        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i), "
+        "result = {{'index': i, 'name': pattern_api.GetPatternPieceName(i), "
         "'position': pattern_api.GetPatternPiecePos(i), 'fabric_index': pattern_api.GetPatternPieceFabricIndex(i), "
-        "'information': pattern_api.GetPatternInformation(i), 'input_information': pattern_api.GetPatternInputInformation(i)}\n"
+        "'information': pattern_api.GetPatternInformation(i), 'input_information': pattern_api.GetPatternInputInformation(i)}}\n"
         .format(int(pattern_index))
     )
 
@@ -134,7 +134,7 @@ def rename_pattern(pattern_index: int, name: str) -> dict:
         "import pattern_api\n"
         "i, name = {}, {!r}\n"
         "pattern_api.SetPatternPieceName(i, name)\n"
-        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i)}\n".format(int(pattern_index), name)
+        "result = {{'index': i, 'name': pattern_api.GetPatternPieceName(i)}}\n".format(int(pattern_index), name)
     )
 
 
@@ -145,7 +145,7 @@ def move_pattern(pattern_index: int, x: float, y: float) -> dict:
         "import pattern_api\n"
         "i = {}\n"
         "pattern_api.SetPatternPiecePos(i, {}, {})\n"
-        "result = {'index': i, 'position': pattern_api.GetPatternPiecePos(i)}\n".format(int(pattern_index), float(x), float(y))
+        "result = {{'index': i, 'position': pattern_api.GetPatternPiecePos(i)}}\n".format(int(pattern_index), float(x), float(y))
     )
 
 
@@ -157,7 +157,7 @@ def delete_pattern(pattern_index: int) -> dict:
         "i = {}\n"
         "before = pattern_api.GetPatternCount()\n"
         "pattern_api.DeletePatternPiece(i)\n"
-        "result = {'deleted_index': i, 'count_before': before, 'count_after': pattern_api.GetPatternCount()}\n".format(int(pattern_index))
+        "result = {{'deleted_index': i, 'count_before': before, 'count_after': pattern_api.GetPatternCount()}}\n".format(int(pattern_index))
     )
 
 
