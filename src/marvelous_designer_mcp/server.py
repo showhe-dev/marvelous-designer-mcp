@@ -180,8 +180,8 @@ def create_fabric(name: str) -> dict:
         "i = fabric_api.AddFabric(name)\n"
         "try:\n    fabric_api.SetFabricName(i, name)\n"
         "except Exception:\n    pass\n"
-        "result = {'index': i, 'name': fabric_api.GetFabricName(i), 'count': fabric_api.GetFabricCount(True), "
-        "'styles': fabric_api.GetFabricStyleNameList()}\n".format(name)
+        "result = {{'index': i, 'name': fabric_api.GetFabricName(i), 'count': fabric_api.GetFabricCount(True), "
+        "'styles': fabric_api.GetFabricStyleNameList()}}\n".format(name)
     )
 
 
@@ -192,7 +192,7 @@ def rename_fabric(fabric_index: int, name: str) -> dict:
         "import fabric_api\n"
         "i, name = {}, {!r}\n"
         "fabric_api.SetFabricName(i, name)\n"
-        "result = {'index': i, 'name': fabric_api.GetFabricName(i)}\n".format(int(fabric_index), name)
+        "result = {{'index': i, 'name': fabric_api.GetFabricName(i)}}\n".format(int(fabric_index), name)
     )
 
 
@@ -208,8 +208,8 @@ def assign_fabric(fabric_index: int, pattern_index: int, face: int = 0) -> dict:
         "fi, pi, fc = {}, {}, {}\n"
         "returned = fabric_api.AssignFabricToPattern(fi, pi, fc)\n"
         "assigned = pattern_api.GetPatternPieceFabricIndex(pi)\n"
-        "result = {'returned': returned, 'requested_fabric_index': fi, 'pattern_fabric_index': assigned, "
-        "'assigned_matches': assigned == fi}\n".format(int(fabric_index), int(pattern_index), int(face))
+        "result = {{'returned': returned, 'requested_fabric_index': fi, 'pattern_fabric_index': assigned, "
+        "'assigned_matches': assigned == fi}}\n".format(int(fabric_index), int(pattern_index), int(face))
     )
 
 
@@ -230,7 +230,7 @@ def import_project(path: str) -> dict:
         "import import_api\n"
         "path = {!r}\n"
         "fn = getattr(import_api, 'ImportFileW', None) or import_api.ImportFile\n"
-        "result = {'ok': bool(fn(path)), 'path': path}\n".format(path)
+        "result = {{'ok': bool(fn(path)), 'path': path}}\n".format(path)
     )
 
 
@@ -242,7 +242,7 @@ def export_project(path: str) -> dict:
         "path = {!r}\n"
         "fn = getattr(export_api, 'ExportZPrjW', None)\n"
         "returned = fn(path, False) if fn is not None else export_api.ExportZPrj(path)\n"
-        "result = {'ok': True, 'path': path, 'returned': returned}\n".format(path)
+        "result = {{'ok': True, 'path': path, 'returned': returned}}\n".format(path)
     )
 
 
@@ -252,7 +252,7 @@ def simulate(steps: int = 1) -> dict:
     return _md_exec(
         "import utility_api\n"
         "steps = {}\n"
-        "result = {'ok': True, 'returned': utility_api.Simulate(steps), 'steps': steps}\n".format(int(steps))
+        "result = {{'ok': True, 'returned': utility_api.Simulate(steps), 'steps': steps}}\n".format(int(steps))
     )
 
 
