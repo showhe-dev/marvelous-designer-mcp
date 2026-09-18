@@ -36,14 +36,14 @@ HOST = "127.0.0.1"
 PORT = 7421
 
 # Persists across execute_python calls within one listener session.
-_persistent_globals: dict = {"__name__": "__md_mcp__"}
+_persistent_globals = {"__name__": "__md_mcp__"}
 
 
-def _handle_ping(_params: dict) -> dict:
+def _handle_ping(_params):
     return {"pong": True}
 
 
-def _handle_execute_python(params: dict) -> dict:
+def _handle_execute_python(params):
     code = params.get("code", "")
     out, err = io.StringIO(), io.StringIO()
     result = None
@@ -68,7 +68,7 @@ HANDLERS = {
 }
 
 
-def _read_line(conn: socket.socket) -> bytes | None:
+def _read_line(conn):
     buf = bytearray()
     while b"\n" not in buf:
         chunk = conn.recv(65536)
@@ -78,7 +78,7 @@ def _read_line(conn: socket.socket) -> bytes | None:
     return bytes(buf).split(b"\n", 1)[0]
 
 
-def _serve_conn(conn: socket.socket) -> bool:
+def _serve_conn(conn):
     """Handle one request on one connection. Returns False iff shutdown was requested.
 
     The MCP-side bridge opens a fresh connection per call, so one request per
@@ -112,7 +112,7 @@ def _serve_conn(conn: socket.socket) -> bool:
         return True
 
 
-def serve_forever() -> None:
+def serve_forever():
     """Blocking listener loop. Call this from MD's Python Editor.
 
     Blocks the MD GUI until a client sends {"method": "shutdown"}.
