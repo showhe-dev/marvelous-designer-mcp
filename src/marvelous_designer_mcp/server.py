@@ -7,18 +7,14 @@ mcp = FastMCP("marvelous-designer")
 
 
 def _md_exec(code: str) -> dict:
-    """Run `code` inside MD via execute_python and flatten the listener's envelope.
-
-    The listener returns {stdout, stderr, result, error}; this returns
-    {"ok": True, "result": ...} or {"ok": False, "error": ...} (plus "stdout" if any).
-    """
+    """Run code inside MD and flatten the listener response envelope."""
     try:
         resp = bridge.call("execute_python", {"code": code})
     except bridge.BridgeError as e:
-        return {"ok": False, "error": f"bridge: {e}"}
+        return {"ok": False, "error": "bridge: {}".format(e)}
     if not isinstance(resp, dict):
         return {"ok": True, "result": resp}
-    out: dict = {"ok": False, "error": resp["error"]} if resp.get("error") else {"ok": True, "result": resp.get("result")}
+    out = {"ok": False, "error": resp["error"]} if resp.get("error") else {"ok": True, "result": resp.get("result")}
     if resp.get("stdout"):
         out["stdout"] = resp["stdout"]
     return out
@@ -26,7 +22,7 @@ def _md_exec(code: str) -> dict:
 
 @mcp.tool()
 def ping() -> dict:
-    """Verify the MD listener is reachable. Returns whatever the listener echoes back."""
+    """Verify the MD listener is reachable."""
     try:
         return {"ok": True, "host": MD_HOST, "port": MD_PORT, "result": bridge.call("ping")}
     except bridge.BridgeError as e:
@@ -35,16 +31,7 @@ def ping() -> dict:
 
 @mcp.tool()
 def execute_python(code: str) -> dict:
-    """Execute arbitrary Python inside Marvelous Designer's interpreter.
-
-    MD's API is exposed as importable modules (import_api, export_api, fabric_api,
-    pattern_api, utility_api, ...), NOT as globals — so `import` what you need.
-    Bind the value you want back to a name called `result`. The API is pybind11-based,
-    so calling a function with wrong args raises a TypeError that lists the accepted
-    signatures — handy for discovery.
-
-    Returns: {"stdout": str, "stderr": str, "result": any, "error": str|None}.
-    """
+    """Execute arbitrary Python inside Marvelous Designer. Bind return data to result."""
     try:
         return bridge.call("execute_python", {"code": code})
     except bridge.BridgeError as e:
@@ -53,7 +40,7 @@ def execute_python(code: str) -> dict:
 
 @mcp.tool()
 def shutdown_listener() -> dict:
-    """Stop the MD-side listener's blocking loop and release the Marvelous Designer GUI."""
+    """Stop the blocking MD listener and release the Marvelous Designer GUI."""
     try:
         return {"ok": True, "result": bridge.call("shutdown")}
     except bridge.BridgeError as e:
@@ -62,11 +49,7 @@ def shutdown_listener() -> dict:
 
 @mcp.tool()
 def capabilities() -> dict:
-    """Detect Marvelous Designer version, Python version, API modules, and commonly used functions.
-
-    This tool is intentionally defensive so Codex can adapt between MD 2025.x and 2026.x
-    instead of assuming a fixed API surface.
-    """
+    """Detect MD/Python versions and the API surface used by this MCP."""
     return _md_exec(
         "import sys, importlib\n"
         "modules = ['import_api', 'export_api', 'fabric_api', 'pattern_api', 'utility_api']\n"
@@ -77,184 +60,210 @@ def capabilities() -> dict:
         "        module_info[name] = {'available': True, 'functions': [n for n in dir(mod) if not n.startswith('_')]}\n"
         "    except Exception as e:\n"
         "        module_info[name] = {'available': False, 'error': str(e), 'functions': []}\n"
-        "version = None\n"
-        "u = module_info.get('utility_api', {})\n"
-        "if u.get('available'):\n"
-        "    try:\n"
-        "        import utility_api\n"
-        "        version = [utility_api.GetMajorVersion(), utility_api.GetMinorVersion(), utility_api.GetPatchVersion()]\n"
-        "    except Exception as e:\n"
-        "        version = {'error': str(e)}\n"
-        "checks = {\n"
-        "    'ImportFile': ('import_api', 'ImportFile'),\n"
-        "    'ImportFileW': ('import_api', 'ImportFileW'),\n"
-        "    'ExportZPrj': ('export_api', 'ExportZPrj'),\n"
-        "    'ExportZPrjW': ('export_api', 'ExportZPrjW'),\n"
-        "    'AssignFabricToPattern': ('fabric_api', 'AssignFabricToPattern'),\n"
-        "    'GetPatternCount': ('pattern_api', 'GetPatternCount'),\n"
-        "    'Simulate': ('utility_api', 'Simulate'),\n"
-        "}\n"
-        "features = {k: (module_info.get(m, {}).get('available', False) and f in module_info[m]['functions']) for k, (m, f) in checks.items()}\n"
-        "result = {\n"
-        "    'md_version': version,\n"
-        "    'python_version': sys.version,\n"
-        "    'modules': {k: {'available': v.get('available', False), 'function_count': len(v.get('functions', [])), 'error': v.get('error')} for k, v in module_info.items()},\n"
-        "    'features': features,\n"
-        "}\n"
+        "import utility_api\n"
+        "version = [utility_api.GetMajorVersion(), utility_api.GetMinorVersion(), utility_api.GetPatchVersion()]\n"
+        "checks = {"
+        "'ImportFile': ('import_api','ImportFile'), 'ImportFileW': ('import_api','ImportFileW'), "
+        "'ExportZPrj': ('export_api','ExportZPrj'), 'ExportZPrjW': ('export_api','ExportZPrjW'), "
+        "'CreatePatternWithPoints': ('pattern_api','CreatePatternWithPoints'), "
+        "'AssignFabricToPattern': ('fabric_api','AssignFabricToPattern'), "
+        "'AddFabric': ('fabric_api','AddFabric'), 'GetPatternCount': ('pattern_api','GetPatternCount'), "
+        "'NewProject': ('utility_api','NewProject'), 'Simulate': ('utility_api','Simulate')}\n"
+        "features = {k: (module_info.get(m, {}).get('available', False) and f in module_info[m]['functions']) for k,(m,f) in checks.items()}\n"
+        "result = {'md_version': version, 'python_version': sys.version, "
+        "'modules': {k: {'available': v.get('available',False), 'function_count': len(v.get('functions',[])), 'error': v.get('error')} for k,v in module_info.items()}, "
+        "'features': features}\n"
     )
 
 
 @mcp.tool()
 def scene_info() -> dict:
-    """Summary of the current MD scene: project name/path, MD version, pattern & fabric counts."""
+    """Return current project, MD version, pattern count and fabric information."""
     return _md_exec(
         "import utility_api, pattern_api, fabric_api\n"
-        "result = {\n"
-        "    'project_name': utility_api.GetProjectName(),\n"
-        "    'project_path': utility_api.GetProjectFilePath(),\n"
-        "    'md_version': [utility_api.GetMajorVersion(), utility_api.GetMinorVersion(), utility_api.GetPatchVersion()],\n"
-        "    'pattern_count': pattern_api.GetPatternCount(),\n"
-        "    'fabric_count': fabric_api.GetFabricCount(True),\n"
-        "    'fabric_styles': fabric_api.GetFabricStyleNameList(),\n"
-        "}\n"
+        "result = {'project_name': utility_api.GetProjectName(), 'project_path': utility_api.GetProjectFilePath(), "
+        "'md_version': [utility_api.GetMajorVersion(), utility_api.GetMinorVersion(), utility_api.GetPatchVersion()], "
+        "'pattern_count': pattern_api.GetPatternCount(), 'fabric_count': fabric_api.GetFabricCount(True), "
+        "'fabric_styles': fabric_api.GetFabricStyleNameList()}\n"
     )
 
 
 @mcp.tool()
 def list_patterns() -> dict:
-    """List pattern pieces in the current scene: index, name, assigned fabric index."""
+    """List pattern pieces with index, name, fabric and 2D position."""
     return _md_exec(
         "import pattern_api\n"
-        "result = [\n"
-        "    {'index': i, 'name': pattern_api.GetPatternPieceName(i), 'fabric_index': pattern_api.GetPatternPieceFabricIndex(i)}\n"
-        "    for i in range(pattern_api.GetPatternCount())\n"
-        "]\n"
+        "result = [{'index': i, 'name': pattern_api.GetPatternPieceName(i), "
+        "'fabric_index': pattern_api.GetPatternPieceFabricIndex(i), 'position': pattern_api.GetPatternPiecePos(i)} "
+        "for i in range(pattern_api.GetPatternCount())]\n"
+    )
+
+
+@mcp.tool()
+def get_pattern_info(pattern_index: int) -> dict:
+    """Return detailed MD information for one pattern piece."""
+    return _md_exec(
+        "import pattern_api\n"
+        "i = {}\n"
+        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i), "
+        "'position': pattern_api.GetPatternPiecePos(i), 'fabric_index': pattern_api.GetPatternPieceFabricIndex(i), "
+        "'information': pattern_api.GetPatternInformation(i), 'input_information': pattern_api.GetPatternInputInformation(i)}\n"
+        .format(int(pattern_index))
+    )
+
+
+@mcp.tool()
+def create_pattern(points: list, name: str = "") -> dict:
+    """Create a 2D pattern from [[x,y,type], ...]. MD 2025 uses List[Tuple[float,float,int]]."""
+    safe = [(float(p[0]), float(p[1]), int(p[2]) if len(p) > 2 else 0) for p in points]
+    return _md_exec(
+        "import pattern_api\n"
+        "pts = {!r}\n"
+        "i = pattern_api.CreatePatternWithPoints(pts)\n"
+        "name = {!r}\n"
+        "if name:\n    pattern_api.SetPatternPieceName(i, name)\n"
+        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i), 'position': pattern_api.GetPatternPiecePos(i), "
+        "'pattern_count': pattern_api.GetPatternCount()}\n".format(safe, name)
+    )
+
+
+@mcp.tool()
+def rename_pattern(pattern_index: int, name: str) -> dict:
+    """Rename a pattern piece."""
+    return _md_exec(
+        "import pattern_api\n"
+        "i, name = {}, {!r}\n"
+        "pattern_api.SetPatternPieceName(i, name)\n"
+        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i)}\n".format(int(pattern_index), name)
+    )
+
+
+@mcp.tool()
+def move_pattern(pattern_index: int, x: float, y: float) -> dict:
+    """Set a pattern piece's 2D position."""
+    return _md_exec(
+        "import pattern_api\n"
+        "i = {}\n"
+        "pattern_api.SetPatternPiecePos(i, {}, {})\n"
+        "result = {'index': i, 'position': pattern_api.GetPatternPiecePos(i)}\n".format(int(pattern_index), float(x), float(y))
+    )
+
+
+@mcp.tool()
+def delete_pattern(pattern_index: int) -> dict:
+    """Delete a pattern piece by index."""
+    return _md_exec(
+        "import pattern_api\n"
+        "i = {}\n"
+        "before = pattern_api.GetPatternCount()\n"
+        "pattern_api.DeletePatternPiece(i)\n"
+        "result = {'deleted_index': i, 'count_before': before, 'count_after': pattern_api.GetPatternCount()}\n".format(int(pattern_index))
     )
 
 
 @mcp.tool()
 def list_fabrics() -> dict:
-    """List fabrics in the current scene: index and name (plus the fabric-style name list)."""
+    """List fabrics and fabric-style names."""
     return _md_exec(
         "import fabric_api\n"
-        "result = {\n"
-        "    'fabrics': [{'index': i, 'name': fabric_api.GetFabricName(i)} for i in range(fabric_api.GetFabricCount(True))],\n"
-        "    'styles': fabric_api.GetFabricStyleNameList(),\n"
-        "}\n"
+        "result = {'fabrics': [{'index': i, 'name': fabric_api.GetFabricName(i)} for i in range(fabric_api.GetFabricCount(True))], "
+        "'styles': fabric_api.GetFabricStyleNameList()}\n"
     )
 
 
 @mcp.tool()
-def assign_fabric(fabric_index: int, pattern_index: int, face: int = 2) -> dict:
-    """Assign a fabric to a pattern piece via fabric_api.AssignFabricToPattern(fabric, pattern, face).
-
-    `face` is the MD third int argument (commonly 0=front, 1=back, 2=both); default 2.
-    On a signature mismatch the raw TypeError is returned so the real meaning can be found.
-    """
-    code = (
+def create_fabric(name: str) -> dict:
+    """Create a fabric and return its index/name."""
+    return _md_exec(
         "import fabric_api\n"
-        f"fi, pi, fc = {int(fabric_index)}, {int(pattern_index)}, {int(face)}\n"
-        "try:\n"
-        "    result = {'ok': bool(fabric_api.AssignFabricToPattern(fi, pi, fc))}\n"
-        "except TypeError as e:\n"
-        "    result = {'ok': False, 'signature_error': str(e)}\n"
+        "name = {!r}\n"
+        "i = fabric_api.AddFabric(name)\n"
+        "try:\n    fabric_api.SetFabricName(i, name)\n"
+        "except Exception:\n    pass\n"
+        "result = {'index': i, 'name': fabric_api.GetFabricName(i), 'count': fabric_api.GetFabricCount(True), "
+        "'styles': fabric_api.GetFabricStyleNameList()}\n".format(name)
     )
-    return _md_exec(code)
+
+
+@mcp.tool()
+def rename_fabric(fabric_index: int, name: str) -> dict:
+    """Rename a fabric."""
+    return _md_exec(
+        "import fabric_api\n"
+        "i, name = {}, {!r}\n"
+        "fabric_api.SetFabricName(i, name)\n"
+        "result = {'index': i, 'name': fabric_api.GetFabricName(i)}\n".format(int(fabric_index), name)
+    )
+
+
+@mcp.tool()
+def assign_fabric(fabric_index: int, pattern_index: int, face: int = 0) -> dict:
+    """Assign a fabric to a pattern. Also reports the resulting pattern fabric index.
+
+    MD 2025.0.127 was observed to return False even when the pattern's resulting
+    fabric index is the requested fabric, so do not interpret the raw bool alone.
+    """
+    return _md_exec(
+        "import fabric_api, pattern_api\n"
+        "fi, pi, fc = {}, {}, {}\n"
+        "returned = fabric_api.AssignFabricToPattern(fi, pi, fc)\n"
+        "assigned = pattern_api.GetPatternPieceFabricIndex(pi)\n"
+        "result = {'returned': returned, 'requested_fabric_index': fi, 'pattern_fabric_index': assigned, "
+        "'assigned_matches': assigned == fi}\n".format(int(fabric_index), int(pattern_index), int(face))
+    )
+
+
+@mcp.tool()
+def new_project() -> dict:
+    """Create a new blank project. This discards the current scene; save first if needed."""
+    return _md_exec(
+        "import utility_api, pattern_api\n"
+        "utility_api.NewProject()\n"
+        "result = {'pattern_count': pattern_api.GetPatternCount()}\n"
+    )
 
 
 @mcp.tool()
 def import_project(path: str) -> dict:
-    """Open an MD project / garment / mesh file (.zprj, .zpac, .obj, .fbx, ...) by absolute path.
-
-    Uses the generic import_api.ImportFile (dispatches by extension); the *W variant
-    handles non-ASCII Windows paths. Returns which call ran and its bool result.
-
-    Caveat: if MD raises a modal dialog (e.g. "save current project?"), the listener
-    deadlocks because the GUI thread is stuck in our accept loop — close MD to recover.
-    """
-    code = (
+    """Open a project/garment/mesh using ImportFileW, falling back to ImportFile."""
+    return _md_exec(
         "import import_api\n"
-        f"path = {path!r}\n"
-        "result = None\n"
-        "for name in ('ImportFileW', 'ImportFile'):\n"
-        "    fn = getattr(import_api, name, None)\n"
-        "    if fn is None:\n"
-        "        continue\n"
-        "    try:\n"
-        "        result = {'ok': bool(fn(path)), 'used': name, 'path': path}\n"
-        "        break\n"
-        "    except TypeError as e:\n"
-        "        result = {'ok': False, 'signature_error': str(e), 'tried': name}\n"
-        "if result is None:\n"
-        "    result = {'ok': False, 'error': 'no ImportFile variant in import_api', 'path': path}\n"
+        "path = {!r}\n"
+        "fn = getattr(import_api, 'ImportFileW', None) or import_api.ImportFile\n"
+        "result = {'ok': bool(fn(path)), 'path': path}\n".format(path)
     )
-    return _md_exec(code)
 
 
 @mcp.tool()
 def export_project(path: str) -> dict:
-    """Save the current scene as a .zprj project file at the given absolute path.
-
-    Uses export_api.ExportZPrjW(path, False) (the bool is the MD second arg; False to
-    avoid any dialog), falling back to ExportZPrj(path). Returns the path string MD
-    reports, or the raw signature error if the call shape was wrong.
-    """
-    code = (
+    """Save the current scene as a .zprj using the verified MD 2025 call shape."""
+    return _md_exec(
         "import export_api\n"
-        f"path = {path!r}\n"
-        "result = None\n"
-        "fnW = getattr(export_api, 'ExportZPrjW', None)\n"
-        "if fnW is not None:\n"
-        "    try:\n"
-        "        result = {'ok': True, 'used': 'ExportZPrjW', 'returned': fnW(path, False)}\n"
-        "    except TypeError as e:\n"
-        "        result = {'ok': False, 'signature_error': str(e), 'tried': 'ExportZPrjW'}\n"
-        "if result is None or not result.get('ok'):\n"
-        "    fn = getattr(export_api, 'ExportZPrj', None)\n"
-        "    if fn is not None:\n"
-        "        try:\n"
-        "            result = {'ok': True, 'used': 'ExportZPrj', 'returned': fn(path)}\n"
-        "        except TypeError as e:\n"
-        "            result = {'ok': False, 'signature_error': str(e), 'tried': 'ExportZPrj'}\n"
-        "if result is None:\n"
-        "    result = {'ok': False, 'error': 'no ExportZPrj variant in export_api', 'path': path}\n"
+        "path = {!r}\n"
+        "fn = getattr(export_api, 'ExportZPrjW', None)\n"
+        "returned = fn(path, False) if fn is not None else export_api.ExportZPrj(path)\n"
+        "result = {'ok': True, 'path': path, 'returned': returned}\n".format(path)
     )
-    return _md_exec(code)
 
 
 @mcp.tool()
 def simulate(steps: int = 1) -> dict:
-    """Run cloth simulation via utility_api.Simulate(int).
-
-    `steps` is the int the MD API expects (its exact meaning — frame/step count or a
-    mode — is version-dependent; 1 is a reasonable default). Returns the bool MD reports.
-    """
-    code = (
+    """Run cloth simulation via utility_api.Simulate(int)."""
+    return _md_exec(
         "import utility_api\n"
-        f"steps = {int(steps)}\n"
-        "try:\n"
-        "    result = {'ok': True, 'returned': utility_api.Simulate(steps), 'steps': steps}\n"
-        "except TypeError as e:\n"
-        "    result = {'ok': False, 'signature_error': str(e)}\n"
+        "steps = {}\n"
+        "result = {'ok': True, 'returned': utility_api.Simulate(steps), 'steps': steps}\n".format(int(steps))
     )
-    return _md_exec(code)
 
 
 @mcp.tool()
 def md_api(module: str, contains: str = "") -> dict:
-    """List the functions of an MD API module (import_api, export_api, fabric_api, pattern_api,
-    utility_api, ...). `contains` filters names by case-insensitive substring.
-
-    To learn a function's signature, call it via execute_python with wrong/no args — the
-    TypeError lists the accepted argument types.
-    """
-    code = (
+    """List public names in an MD API module."""
+    return _md_exec(
         "import importlib\n"
-        f"mod = importlib.import_module({module!r})\n"
-        f"sub = {contains.lower()!r}\n"
+        "mod = importlib.import_module({!r})\n"
+        "sub = {!r}\n"
         "names = [n for n in dir(mod) if not n.startswith('_')]\n"
-        "if sub:\n"
-        "    names = [n for n in names if sub in n.lower()]\n"
-        "result = sorted(names)\n"
+        "if sub:\n    names = [n for n in names if sub in n.lower()]\n"
+        "result = sorted(names)\n".format(module, contains.lower())
     )
-    return _md_exec(code)
