@@ -122,8 +122,8 @@ def create_pattern(points: list, name: str = "") -> dict:
         "i = pattern_api.CreatePatternWithPoints(pts)\n"
         "name = {!r}\n"
         "if name:\n    pattern_api.SetPatternPieceName(i, name)\n"
-        "result = {'index': i, 'name': pattern_api.GetPatternPieceName(i), 'position': pattern_api.GetPatternPiecePos(i), "
-        "'pattern_count': pattern_api.GetPatternCount()}\n".format(safe, name)
+        "result = {{'index': i, 'name': pattern_api.GetPatternPieceName(i), 'position': pattern_api.GetPatternPiecePos(i), "
+        "'pattern_count': pattern_api.GetPatternCount()}}\n".format(safe, name)
     )
 
 
