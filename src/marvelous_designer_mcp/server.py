@@ -61,6 +61,50 @@ def shutdown_listener() -> dict:
 
 
 @mcp.tool()
+def capabilities() -> dict:
+    """Detect Marvelous Designer version, Python version, API modules, and commonly used functions.
+
+    This tool is intentionally defensive so Codex can adapt between MD 2025.x and 2026.x
+    instead of assuming a fixed API surface.
+    """
+    return _md_exec(
+        "import sys, importlib\n"
+        "modules = ['import_api', 'export_api', 'fabric_api', 'pattern_api', 'utility_api']\n"
+        "module_info = {}\n"
+        "for name in modules:\n"
+        "    try:\n"
+        "        mod = importlib.import_module(name)\n"
+        "        module_info[name] = {'available': True, 'functions': [n for n in dir(mod) if not n.startswith('_')]}\n"
+        "    except Exception as e:\n"
+        "        module_info[name] = {'available': False, 'error': str(e), 'functions': []}\n"
+        "version = None\n"
+        "u = module_info.get('utility_api', {})\n"
+        "if u.get('available'):\n"
+        "    try:\n"
+        "        import utility_api\n"
+        "        version = [utility_api.GetMajorVersion(), utility_api.GetMinorVersion(), utility_api.GetPatchVersion()]\n"
+        "    except Exception as e:\n"
+        "        version = {'error': str(e)}\n"
+        "checks = {\n"
+        "    'ImportFile': ('import_api', 'ImportFile'),\n"
+        "    'ImportFileW': ('import_api', 'ImportFileW'),\n"
+        "    'ExportZPrj': ('export_api', 'ExportZPrj'),\n"
+        "    'ExportZPrjW': ('export_api', 'ExportZPrjW'),\n"
+        "    'AssignFabricToPattern': ('fabric_api', 'AssignFabricToPattern'),\n"
+        "    'GetPatternCount': ('pattern_api', 'GetPatternCount'),\n"
+        "    'Simulate': ('utility_api', 'Simulate'),\n"
+        "}\n"
+        "features = {k: (module_info.get(m, {}).get('available', False) and f in module_info[m]['functions']) for k, (m, f) in checks.items()}\n"
+        "result = {\n"
+        "    'md_version': version,\n"
+        "    'python_version': sys.version,\n"
+        "    'modules': {k: {'available': v.get('available', False), 'function_count': len(v.get('functions', [])), 'error': v.get('error')} for k, v in module_info.items()},\n"
+        "    'features': features,\n"
+        "}\n"
+    )
+
+
+@mcp.tool()
 def scene_info() -> dict:
     """Summary of the current MD scene: project name/path, MD version, pattern & fabric counts."""
     return _md_exec(
