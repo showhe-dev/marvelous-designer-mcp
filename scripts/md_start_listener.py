@@ -41,10 +41,16 @@ try:
     _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     _ADDON_DIR = os.path.normpath(os.path.join(_SCRIPT_DIR, "..", "md_addon"))
 except NameError:
-    _ADDON_DIR = r"C:\Users\azoo\git\marvelous-designer-mcp\md_addon"  # <-- edit if needed
+    raise RuntimeError(
+        "Could not determine the listener path because __file__ is unavailable. "
+        "Run scripts/md_start_listener.py as a registered plug-in, or paste "
+        "md_addon/md_listener.py directly into Marvelous Designer's Python Editor."
+    )
 
 if not os.path.isdir(_ADDON_DIR):
-    _ADDON_DIR = r"C:\Users\azoo\git\marvelous-designer-mcp\md_addon"  # <-- edit if needed
+    raise RuntimeError(
+        "Could not find md_addon next to the launcher. Expected: " + _ADDON_DIR
+    )
 
 if _ADDON_DIR not in sys.path:
     sys.path.insert(0, _ADDON_DIR)
